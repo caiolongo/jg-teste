@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_USER: wagering
+      POSTGRES_PASSWORD: wagering
+      POSTGRES_DB: wagering
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wagering -d wagering"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # 4.14.0 is the last LocalStack Community image that starts without an auth token.
+  localstack:
+    image: localstack/localstack:4.14.0
+    environment:
+      SERVICES: sqs
+      AWS_DEFAULT_REGION: us-east-1
+    ports:
+      - "4566:4566"
+    volumes:
+      - ./infra/localstack/init-queues.sh:/etc/localstack/init/ready.d/init-queues.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "awslocal sqs get-queue-url --queue-name wagering-events >/dev/null 2>&1"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+
+  # One-shot: applies migrations once, so scaled replicas never race on the schema.
+  migrate:
+    build: .
+    env_file: .env.docker
+    command: ["bun", "run", "src/infrastructure/persistence/migrate.ts", "up"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build: .
+    env_file: .env.docker
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      localstack:
+        condition: service_healthy
+    # Range so `docker compose up --scale app=3` maps each replica to its own host port.
+    ports:
+      - "3000-3002:3000"
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health/ready >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # Demo UI — only with `docker compose --profile localweb up` (or `bun run localweb`).
+  localweb:
+    image: nginx:1.27.5-alpine
+    profiles: ["localweb"]
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./infra/nginx/localweb.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      app:
+        condition: service_healthy

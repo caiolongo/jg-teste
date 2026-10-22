@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Wagering Demo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Distributed Wagering Processor</h1>
+      <p class="muted">Demonstração local — tudo passa pela API HTTP pública, distribuída entre as réplicas.</p>
+    </div>
+    <div class="status">
+      <span id="health" class="pill">verificando…</span>
+      <span id="instances" class="pill neutral">instâncias vistas: 0</span>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="card" id="wallets-card">
+      <h2>Carteiras</h2>
+      <form id="create-wallet" class="row">
+        <label>Saldo inicial (BRL)
+          <input name="amount" value="1000.00" inputmode="decimal" required>
+        </label>
+        <button type="submit">Criar carteira</button>
+      </form>
+      <ul id="wallet-list" class="wallet-list"></ul>
+    </section>
+
+    <section class="card" id="wallet-card">
+      <h2>Carteira selecionada</h2>
+      <div id="wallet-empty" class="muted">Crie ou selecione uma carteira.</div>
+      <div id="wallet-detail" hidden>
+        <div class="balance">
+          <span class="muted">Saldo</span>
+          <strong id="balance">—</strong>
+          <span class="muted" id="version"></span>
+        </div>
+        <p class="mono small" id="wallet-ids"></p>
+        <div class="row">
+          <button id="refresh" class="secondary">Atualizar</button>
+          <button id="reconcile" class="secondary">Reconciliar</button>
+        </div>
+        <div id="reconcile-result"></div>
+
+        <h3>Nova transação</h3>
+        <form id="submit-tx" class="grid-form">
+          <label>Tipo
+            <select name="kind">
+              <option>BET</option><option>WIN</option><option>LOSS</option><option>REFUND</option><option>ROLLBACK</option>
+            </select>
+          </label>
+          <label>Valor (BRL)
+            <input name="amount" value="25.00" inputmode="decimal" required>
+          </label>
+          <label>Referência (REFUND / ROLLBACK)
+            <select name="reference"><option value="">— nenhuma —</option></select>
+          </label>
+          <label>externalTransactionId
+            <input name="external" placeholder="gerado automaticamente">
+          </label>
+          <button type="submit">Enviar</button>
+          <button type="button" id="resend" class="secondary" title="Mesma Idempotency-Key e mesmo corpo">Reenviar a última</button>
+        </form>
+        <div id="tx-result"></div>
+
+        <h3>Ledger</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>v</th><th>Direção</th><th>Valor</th><th>Antes</th><th>Depois</th><th>Transação</th></tr></thead>
+            <tbody id="ledger"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="scenarios-card">
+      <h2>Cenários</h2>
+      <p class="muted small">Cada cenário cria a própria carteira e mostra o que o desafio exige.</p>
+      <div class="scenario">
+        <button data-scenario="section8">§8 — duas apostas de 80,00 em paralelo sobre 100,00</button>
+      </div>
+      <div class="scenario">
+        <button data-scenario="replay">Mesma aposta enviada 50× em paralelo</button>
+      </div>
+      <div class="scenario">
+        <button data-scenario="conflict">Mesma Idempotency-Key com outro valor</button>
+      </div>
+      <div class="scenario">
+        <button data-scenario="outOfOrder">ROLLBACK chega antes da BET</button>
+      </div>
+      <div class="scenario">
+        <button data-scenario="insufficient">Aposta sem saldo e reversão sem saldo</button>
+      </div>
+      <div id="scenario-result"></div>
+    </section>
+
+    <section class="card" id="log-card">
+      <h2>Requisições</h2>
+      <div class="table-wrap log">
+        <table>
+          <thead><tr><th>Status</th><th>Chamada</th><th>ms</th><th>Instância</th><th>Correlation id</th></tr></thead>
+          <tbody id="log"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js" type="module"></script>
+</body>
+</html>

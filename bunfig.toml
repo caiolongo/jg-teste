@@ -1,0 +1,3 @@
+[test]
+# Integration tests wait on real SQS redelivery and lock timeouts; see test/support/setup.ts.
+preload = ["./test/support/setup.ts"]
